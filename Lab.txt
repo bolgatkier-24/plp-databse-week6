@@ -1,0 +1,220 @@
+PrezzoKuok@GROUP61-034:~$ CREATE ROLE "PrezzoKuok" WITH SUPERUSER LOGIN;
+CREATE: command not found
+PrezzoKuok@GROUP61-034:~$ sudo -u postgres psql
+psql (18.6 (Ubuntu 18.6-0ubuntu0.26.04.1))
+Type "help" for help.
+
+postgres=# CREATE ROLE "PrezzoKuok" WITH SUPERUSER LOGIN;
+CREATE ROLE
+postgres=# sudo -u postgres psql
+postgres-# ALTER ROLE "PrezzoKuok" WITH PASSWORD 'prezzo211';
+ERROR:  syntax error at or near "sudo"
+LINE 1: sudo -u postgres psql
+        ^
+postgres=# CREATE ROLE "PrezzoKuok" WITH SUPERUSER LOGIN;
+CREATE ROLE
+ERROR:  role "PrezzoKuok" already exists
+postgres-# ALTER ROLE "PrezzoKuok" WITH PASSWORD 'prezzo211';
+ERROR:  syntax error at or near "WITH"
+LINE 2: ALTER ROLE "PrezzoKuok" WITH PASSWORD 'prezzo211';
+                                ^
+postgres=# \q
+PrezzoKuok@GROUP61-034:~$ sudo -u postgres psql -c 'ALTER ROLE "PrezzoKuok" WITH PASSWORD '\''prezzo211'\'';'
+ALTER ROLE
+PrezzoKuok@GROUP61-034:~$ psql -U PrezzoKuok -d bootcamp -W
+Password:
+psql (18.6 (Ubuntu 18.6-0ubuntu0.26.04.1))
+Type "help" for help.
+
+bootcamp=# \q
+PrezzoKuok@GROUP61-034:~$ mkdir -p ~/backups
+PrezzoKuok@GROUP61-034:~$ pg_dump -Fc -f ~/backups/bootcamp.dump bootcamp
+PrezzoKuok@GROUP61-034:~$ sudo nano /etc/postgresql/16/main/postgresql.conf
+PrezzoKuok@GROUP61-034:~$ sudo nano /etc/postgresql/18/main/postgresql.conf
+PrezzoKuok@GROUP61-034:~$ sudo systemctl restart postgresql
+PrezzoKuok@GROUP61-034:~$ pg_basebackup -D ~/backups/base -Ft -z -Xs -P
+31506/31506 kB (100%), 1/1 tablespace
+PrezzoKuok@GROUP61-034:~$ psql -d bootcamp
+psql (18.6 (Ubuntu 18.6-0ubuntu0.26.04.1))
+Type "help" for help.
+
+bootcamp=# SELECT now();
+              now
+-------------------------------
+ 2026-11-06 09:34:04.043337+03
+(1 row)
+
+bootcamp=# DELETE FROM students;
+DELETE 2
+bootcamp=# SELECT count(*) FROM students;
+ count
+-------
+     0
+(1 row)
+
+bootcamp=# sudo systemctl stop postgresql
+bootcamp-# \q
+PrezzoKuok@GROUP61-034:~$ sudo systemctl stop postgresql
+PrezzoKuok@GROUP61-034:~$ sudo rm -rf /var/lib/postgresql/18/main/*
+PrezzoKuok@GROUP61-034:~$ sudo tar -xzf ~/backups/base/base.tar.gz -C /var/lib/postgresql/18/main/
+PrezzoKuok@GROUP61-034:~$ sudo tar -xzf ~/backups/base/pg_wal.tar.gz -C /var/lib/postgresql/18/main/pg_wal/
+PrezzoKuok@GROUP61-034:~$ ls -l /var/lib/postresql/18/main/
+ls: cannot access '/var/lib/postresql/18/main/': No such file or directory
+PrezzoKuok@GROUP61-034:~$ sudo touch /var/lib/postgresql/18/main/recovery.signal
+PrezzoKuok@GROUP61-034:~$ sudo nano /etc/postgresql/18/main/postgresql.conf
+PrezzoKuok@GROUP61-034:~$ sudo tail -n 2 /etc/postgresql/18/main/postgresql.conf
+restore_command = 'cp /home/PrezzoKuok/backups/wal/%f %p'
+recovery_target_time = '2026-11-06 09:34:04.043337+03'
+PrezzoKuok@GROUP61-034:~$ sudo systemctl start postgresql
+PrezzoKuok@GROUP61-034:~$ psql -d bootcamp -c "SELECT count(*) FROM students;
+>
+> ^C
+PrezzoKuok@GROUP61-034:~$ psql -d bootcamp -c "SELECT count(*) FROM students;"
+ count
+-------
+     2
+(1 row)
+
+PrezzoKuok@GROUP61-034:~$ sudo -u postgres psql -c "CREATE ROLE replicator WITH REPLICATION LOGIN PASSWORD 'reppass';"
+ERROR:  cannot execute CREATE ROLE in a read-only transaction
+PrezzoKuok@GROUP61-034:~$ sudo -u postgres psql -c "SELECT pg_is_in_recovery();"
+ pg_is_in_recovery
+-------------------
+ t
+(1 row)
+
+PrezzoKuok@GROUP61-034:~$ sudo systemctl stop postgresql
+PrezzoKuok@GROUP61-034:~$ sudo rm -f /var/lib/postgresql/18/main/recovery.signal
+PrezzoKuok@GROUP61-034:~$ sudo systemctl start postgresql
+PrezzoKuok@GROUP61-034:~$ sudo -u postgres psql -c "SELECT pg_is_in_recovery();"
+ pg_is_in_recovery
+-------------------
+ f
+(1 row)
+
+PrezzoKuok@GROUP61-034:~$ sudo -u postgres psql -c "CREATE ROLE replicator WITH REPLICATION LOGIN PASSWORD 'reppass';"
+CREATE ROLE
+PrezzoKuok@GROUP61-034:~$ nano ~/standby/postgresql.conf
+PrezzoKuok@GROUP61-034:~$ nano ~/standby/postgresql.conf
+PrezzoKuok@GROUP61-034:~$ pg_basebackup -h 127.0.0.1 -U replicator -D ~/standby -R -P
+Password:
+pg_basebackup: error: connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "replicator"
+connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "replicator"
+PrezzoKuok@GROUP61-034:~$ pg_basebackup -h 127.0.0.1 -U replicator -D ~/standby -R -P
+Password:
+pg_basebackup: error: connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "replicator"
+connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "replicator"
+PrezzoKuok@GROUP61-034:~$ pg_basebackup -h 127.0.0.1 -U replicator -D ~/standby -R -P
+Password:
+pg_basebackup: error: connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "replicator"
+connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "replicator"
+PrezzoKuok@GROUP61-034:~$ pg_basebackup -h 127.0.0.1 -U replicator -D ~/standby -R -P
+Password:
+pg_basebackup: error: connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "replicator"
+connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "replicator"
+PrezzoKuok@GROUP61-034:~$ sudo -u postgres psql -c "ALTER ROLE replicator WITH PASSWORD 'reppass';"
+ALTER ROLE
+PrezzoKuok@GROUP61-034:~$ sudo nano /etc/postgresql/18/main/pg_hba.conf
+
+
+
+
+PrezzoKuok@GROUP61-034:~$ rm -rf ~/standby
+PrezzoKuok@GROUP61-034:~$ pg_basebackup -h 127.0.0.1 -U replicator -D ~/standby -R -P
+Password:
+31507/31507 kB (100%), 1/1 tablespace
+PrezzoKuok@GROUP61-034:~$ nano ~/standby/postgresql.conf
+
+
+
+
+
+
+PrezzoKuok@GROUP61-034:~$ grep "^port" ~/standby/postgresql.conf
+port = 5433
+PrezzoKuok@GROUP61-034:~$ pg_ctl -D ~/standby start
+Command 'pg_ctl' not found, did you mean:
+  command 'dg_ctl' from deb drogon (1.9.11+ds-1)
+Try: sudo apt install <deb name>
+PrezzoKuok@GROUP61-034:~$ /usr/lib/postgresql/18/bin/pg_ctl -D ~/standby -l ~/standby/logfile start
+waiting for server to start.... stopped waiting
+pg_ctl: could not start server
+Examine the log output.
+PrezzoKuok@GROUP61-034:~$ psql -p 5433 -d bootcamp -c "SELECT pg_is_in_recovery();"
+psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5433" failed: No such file or directory
+        Is the server running locally and accepting connections on that socket?
+PrezzoKuok@GROUP61-034:~$ tail -n 20 ~/standby/logfile
+2026-11-06 07:01:02.484 GMT [1907] LOG:  starting PostgreSQL 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0, 64-bit
+2026-11-06 07:01:02.484 GMT [1907] LOG:  listening on IPv4 address "127.0.0.1", port 5433
+2026-11-06 07:01:02.554 GMT [1907] FATAL:  could not create lock file "/var/run/postgresql/.s.PGSQL.5433.lock": Permission denied
+2026-11-06 07:01:02.556 GMT [1907] LOG:  database system is shut down
+PrezzoKuok@GROUP61-034:~$ nano ~/standby/postgresql.conf
+PrezzoKuok@GROUP61-034:~$ /usr/lib/postgresql/18/bin/pg_ctl -D ~/standby -l ~/standby/logfile start
+waiting for server to start.... stopped waiting
+pg_ctl: could not start server
+Examine the log output.
+PrezzoKuok@GROUP61-034:~$ /usr/lib/postgresql/18/bin/pg_ctl -D ~/standby status
+pg_ctl: no server running
+PrezzoKuok@GROUP61-034:~$ mkdir -p ~/standby/socket
+PrezzoKuok@GROUP61-034:~$ nano ~/standby/postgresql.conf
+PrezzoKuok@GROUP61-034:~$ /usr/lib/postgresql/18/bin/pg_ctl -D ~/standby -l ~/standby/logfile start
+waiting for server to start.... stopped waiting
+pg_ctl: could not start server
+Examine the log output.
+PrezzoKuok@GROUP61-034:~$ tail -n 20 ~/standby/logfile
+2026-11-06 07:01:02.484 GMT [1907] LOG:  starting PostgreSQL 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0, 64-bit
+2026-11-06 07:01:02.484 GMT [1907] LOG:  listening on IPv4 address "127.0.0.1", port 5433
+2026-11-06 07:01:02.554 GMT [1907] FATAL:  could not create lock file "/var/run/postgresql/.s.PGSQL.5433.lock": Permission denied
+2026-11-06 07:01:02.556 GMT [1907] LOG:  database system is shut down
+2026-11-06 07:03:41.259 GMT [1976] LOG:  starting PostgreSQL 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0, 64-bit
+2026-11-06 07:03:41.259 GMT [1976] LOG:  listening on IPv4 address "127.0.0.1", port 5433
+2026-11-06 07:03:41.359 GMT [1976] LOG:  listening on Unix socket "/home/PrezzoKuok/standby/.s.PGSQL.5433"
+2026-11-06 07:03:41.410 GMT [1976] LOG:  could not open file "/home/PrezzoKuok/standby/pg_hba.conf": No such file or directory
+2026-11-06 07:03:41.410 GMT [1976] FATAL:  could not load /home/PrezzoKuok/standby/pg_hba.conf
+2026-11-06 07:03:41.413 GMT [1976] LOG:  database system is shut down
+2026-11-06 07:05:12.857 GMT [2030] LOG:  starting PostgreSQL 18.6 (Ubuntu 18.6-0ubuntu0.26.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0, 64-bit
+2026-11-06 07:05:12.857 GMT [2030] LOG:  listening on IPv4 address "127.0.0.1", port 5433
+2026-11-06 07:05:12.964 GMT [2030] LOG:  listening on Unix socket "/home/PrezzoKuok/standby/.s.PGSQL.5433"
+2026-11-06 07:05:13.023 GMT [2030] LOG:  could not open file "/home/PrezzoKuok/standby/pg_hba.conf": No such file or directory
+2026-11-06 07:05:13.023 GMT [2030] FATAL:  could not load /home/PrezzoKuok/standby/pg_hba.conf
+2026-11-06 07:05:13.024 GMT [2030] LOG:  database system is shut down
+PrezzoKuok@GROUP61-034:~$ sudo cp /etc/postgresql/18/main/pg_hba.conf ~/standby/
+PrezzoKuok@GROUP61-034:~$ sudo chown PrezzoKuok:PrezzoKuok ~/standby/pg_hba.conf
+PrezzoKuok@GROUP61-034:~$ echo "port = 5433" >> ~/standby/postgresql.conf
+PrezzoKuok@GROUP61-034:~$ echo "unix_socket_directories = '/home/PrezzoKuok/standby/socket'" >> ~/standby/postgresql.conf
+PrezzoKuok@GROUP61-034:~$ tail -n 3 ~/standby/postresql.conf
+tail: cannot open '/home/PrezzoKuok/standby/postresql.conf' for reading: No such file or directory
+PrezzoKuok@GROUP61-034:~$ /usr/lib/postgresql/18/bin/pg_ctl -D ~/standby -l ~/standby/logfile start
+waiting for server to start.... done
+server started
+PrezzoKuok@GROUP61-034:~$ sudo -u postgres psql -c "
+SELECT application_name, state,
+       pg_wal_lsn_diff(sent_lsn, replay_lsn) AS lag_bytes
+FROM pg_stat_replication;"
+ application_name |   state   | lag_bytes
+------------------+-----------+-----------
+ walreceiver      | streaming |         0
+(1 row)
+
+PrezzoKuok@GROUP61-034:~$ psql -h /home/PrezzoKuok/standby/socket -p 5433 -d bootcamp -c "SELECT COUNT(*) FROM students;"
+ count
+-------
+     0
+(1 row)
+
+PrezzoKuok@GROUP61-034:~$ sudo -u postgres psql -d bootcamp -c "SELECT COUNT(*) FROM students;"
+ count
+-------
+     0
+(1 row)
+
+PrezzoKuok@GROUP61-034:~$ sudo -u postgres psql -d bootcamp -c "INSERT INTO students (name) VALUES ('Test Student');"
+INSERT 0 1
+PrezzoKuok@GROUP61-034:~$ psql -h /home/PrezzoKuok/standby/socket -p 5433 -d bootcamp -c "SELECT * FROM students;"
+ id |     name     |       enrolled_date
+----+--------------+----------------------------
+  3 | Test Student | 2026-11-06 10:10:39.913367
+(1 row)
+
+PrezzoKuok@GROUP61-034:~$
+
